@@ -1,3 +1,4 @@
+
 package com.kishore.jarvis
 
 import android.os.Bundle
@@ -19,6 +20,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
@@ -48,6 +51,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun JarvisApp() {
     var message by remember { mutableStateOf("") }
+
     var messages by remember {
         mutableStateOf(
             listOf(
@@ -59,8 +63,10 @@ fun JarvisApp() {
 
     fun sendMessage() {
         if (message.isNotBlank()) {
-            messages = messages + "YOU: $message" +
+            messages = messages +
+                "YOU: $message" +
                 "JARVIS: Local demonstration mode. AI connection will be added in Stage 3."
+
             message = ""
         }
     }
@@ -88,6 +94,7 @@ fun JarvisApp() {
                             fontSize = 25.sp,
                             fontWeight = FontWeight.Bold
                         )
+
                         Text(
                             "ADVANCED PERSONAL ASSISTANT",
                             color = MutedText,
@@ -113,7 +120,9 @@ fun JarvisApp() {
                                     .clip(CircleShape)
                                     .background(Color(0xFF00FF9D))
                             )
+
                             Spacer(Modifier.width(7.dp))
+
                             Text(
                                 "ONLINE",
                                 color = Color(0xFF00FF9D),
@@ -146,6 +155,7 @@ fun JarvisApp() {
                             fontSize = 12.sp,
                             letterSpacing = 3.sp
                         )
+
                         Text(
                             "HYBRID AI INTERFACE",
                             color = MutedText,
@@ -179,7 +189,9 @@ fun JarvisApp() {
                         Text(
                             text = item,
                             color = if (item.startsWith("YOU:"))
-                                Cyan else Color(0xFFD4E7F8),
+                                Cyan
+                            else
+                                Color(0xFFD4E7F8),
                             fontSize = 13.sp,
                             lineHeight = 20.sp
                         )
@@ -223,6 +235,7 @@ fun JarvisApp() {
                                         fontSize = 14.sp
                                     )
                                 }
+
                                 innerTextField()
                             }
                         }
@@ -266,7 +279,10 @@ fun HologramCore() {
         initialValue = 0.85f,
         targetValue = 1.12f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = FastOutSlowInEasing),
+            animation = tween(
+                1800,
+                easing = FastOutSlowInEasing
+            ),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulse"
@@ -276,7 +292,10 @@ fun HologramCore() {
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(9000, easing = LinearEasing)
+            animation = tween(
+                9000,
+                easing = LinearEasing
+            )
         ),
         label = "rotation"
     )
@@ -303,7 +322,7 @@ fun HologramCore() {
             center = center
         )
 
-        // Outer rotating rings
+        // Outer ring
         drawCircle(
             color = Cyan.copy(alpha = 0.35f),
             radius = base * 1.65f,
@@ -311,6 +330,7 @@ fun HologramCore() {
             style = Stroke(width = 2.dp.toPx())
         )
 
+        // Rotating arcs
         drawArc(
             color = Cyan,
             startAngle = rotation,
@@ -320,7 +340,10 @@ fun HologramCore() {
                 center.x - base * 1.85f,
                 center.y - base * 1.85f
             ),
-            size = Size(base * 3.7f, base * 3.7f),
+            size = Size(
+                base * 3.7f,
+                base * 3.7f
+            ),
             style = Stroke(width = 3.dp.toPx())
         )
 
@@ -333,7 +356,10 @@ fun HologramCore() {
                 center.x - base * 1.4f,
                 center.y - base * 1.4f
             ),
-            size = Size(base * 2.8f, base * 2.8f),
+            size = Size(
+                base * 2.8f,
+                base * 2.8f
+            ),
             style = Stroke(width = 2.dp.toPx())
         )
 
@@ -368,13 +394,19 @@ fun HologramCore() {
             val angle = Math.toRadians(
                 (rotation + i * 45f).toDouble()
             )
+
             val start = Offset(
-                center.x + kotlin.math.cos(angle).toFloat() * base * 1.15f,
-                center.y + kotlin.math.sin(angle).toFloat() * base * 1.15f
+                center.x +
+                    kotlin.math.cos(angle).toFloat() * base * 1.15f,
+                center.y +
+                    kotlin.math.sin(angle).toFloat() * base * 1.15f
             )
+
             val end = Offset(
-                center.x + kotlin.math.cos(angle).toFloat() * base * 1.48f,
-                center.y + kotlin.math.sin(angle).toFloat() * base * 1.48f
+                center.x +
+                    kotlin.math.cos(angle).toFloat() * base * 1.48f,
+                center.y +
+                    kotlin.math.sin(angle).toFloat() * base * 1.48f
             )
 
             drawLine(
