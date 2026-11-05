@@ -1,3 +1,4 @@
+
 package com.kishore.jarvis.automation
 
 import android.content.Context
@@ -26,10 +27,11 @@ class CommandExecutionManager(context: Context) {
     )
 
     fun execute(input: String): CommandExecutionResult {
+
         if (input.isBlank()) {
             return CommandExecutionResult(
-                false,
-                "Please tell me what you want me to do."
+                success = false,
+                response = "Please tell me what you want me to do."
             )
         }
 
@@ -37,11 +39,12 @@ class CommandExecutionManager(context: Context) {
 
         return when (command.type) {
 
-            CommandType.GREETING ->
+            CommandType.GREETING -> {
                 CommandExecutionResult(
-                    true,
-                    "Hello! JARVIS is ready. How can I help you?"
+                    success = true,
+                    response = "Hello! JARVIS is ready. How can I help you?"
                 )
+            }
 
             CommandType.GET_TIME -> {
                 val time = SimpleDateFormat(
@@ -50,8 +53,8 @@ class CommandExecutionManager(context: Context) {
                 ).format(Date())
 
                 CommandExecutionResult(
-                    true,
-                    "The current time is $time."
+                    success = true,
+                    response = "The current time is $time."
                 )
             }
 
@@ -62,8 +65,8 @@ class CommandExecutionManager(context: Context) {
                 ).format(Date())
 
                 CommandExecutionResult(
-                    true,
-                    "Today is $date."
+                    success = true,
+                    response = "Today is $date."
                 )
             }
 
@@ -73,8 +76,8 @@ class CommandExecutionManager(context: Context) {
                 )
 
                 CommandExecutionResult(
-                    result.success,
-                    result.message
+                    success = result.success,
+                    response = result.message
                 )
             }
 
@@ -83,8 +86,8 @@ class CommandExecutionManager(context: Context) {
 
                 if (note.isBlank()) {
                     CommandExecutionResult(
-                        false,
-                        "Please tell me what note to save."
+                        success = false,
+                        response = "Please tell me what note to save."
                     )
                 } else {
                     localStorage.saveNote(
@@ -93,8 +96,8 @@ class CommandExecutionManager(context: Context) {
                     )
 
                     CommandExecutionResult(
-                        true,
-                        "Your note has been saved."
+                        success = true,
+                        response = "Your note has been saved."
                     )
                 }
             }
@@ -105,19 +108,22 @@ class CommandExecutionManager(context: Context) {
                 )
 
                 CommandExecutionResult(
-                    result.success,
-                    result.message,
-                    result.success
+                    success = result.success,
+                    response = result.message,
+                    requiresConfirmation = result.success
                 )
             }
 
-            CommandType.SET_REMINDER ->
+            CommandType.SET_REMINDER -> {
                 reminderHandler.createReminder(input)
+            }
 
-            else -> CommandExecutionResult(
-                false,
-                "This command needs additional integration."
-            )
+            else -> {
+                CommandExecutionResult(
+                    success = false,
+                    response = "This command needs additional integration."
+                )
+            }
         }
     }
 }
