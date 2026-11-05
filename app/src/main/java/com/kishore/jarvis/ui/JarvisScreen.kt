@@ -2,12 +2,16 @@ package com.kishore.jarvis.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,71 +23,75 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kishore.jarvis.core.JarvisState
 
 @Composable
 fun JarvisScreen(
     state: JarvisState,
-    onSendMessage: (String) -> Unit,
+    onInputChange: (String) -> Unit,
+    onSendMessage: () -> Unit,
     onMicrophoneClick: () -> Unit,
     onConfirmAction: () -> Unit,
     onCancelAction: () -> Unit
 ) {
-    var inputText by remember { mutableStateOf("") }
-
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xFF080D18)
+        color = Color(0xFF050B16)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(16.dp)
         ) {
-
             Text(
                 text = "J.A.R.V.I.S",
-                style = MaterialTheme.typography.headlineLarge,
-                color = Color(0xFF00D9FF)
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color(0xFF00E5FF),
+                fontWeight = FontWeight.Bold
             )
 
             Text(
                 text = state.statusMessage,
                 color = Color.LightGray,
-                modifier = Modifier.padding(top = 6.dp, bottom = 12.dp)
+                style = MaterialTheme.typography.bodyMedium
             )
 
-            HologramCore(
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 150.dp, max = 190.dp)
-            )
+                    .height(190.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                HologramCore(
+                    modifier = Modifier.size(180.dp)
+                )
+            }
 
             Text(
                 text = "CONVERSATION",
-                color = Color(0xFF00D9FF),
-                modifier = Modifier.padding(vertical = 12.dp)
+                color = Color(0xFF00E5FF),
+                fontWeight = FontWeight.Bold
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             LazyColumn(
                 modifier = Modifier
-                    .weight(1f)
                     .fillMaxWidth()
+                    .weight(1f)
                     .background(
-                        Color(0xFF111A2B),
-                        RoundedCornerShape(14.dp)
+                        Color(0xFF101B2A),
+                        RoundedCornerShape(12.dp)
                     )
                     .padding(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(state.conversation) { message ->
                     Column(
@@ -95,97 +103,78 @@ fun JarvisScreen(
                         }
                     ) {
                         Text(
-                            text = if (message.isUser) "YOU" else "JARVIS",
-                            color = if (message.isUser) {
-                                Color(0xFF70C7FF)
+                            text = if (message.isUser) {
+                                "YOU"
                             } else {
-                                Color(0xFF00E5B0)
-                            }
+                                "JARVIS"
+                            },
+                            color = Color(0xFF00E5FF),
+                            fontWeight = FontWeight.Bold
                         )
 
                         Text(
                             text = message.message,
-                            color = Color.White,
-                            modifier = Modifier
-                                .background(
-                                    Color(0xFF202D43),
-                                    RoundedCornerShape(10.dp)
-                                )
-                                .padding(10.dp)
-                        )
-                    }
-                }
-
-                if (state.isProcessing) {
-                    item {
-                        Text(
-                            text = "JARVIS is thinking...",
-                            color = Color(0xFF00D9FF)
+                            color = Color.White
                         )
                     }
                 }
             }
 
-            state.errorMessage?.let { error ->
-                Text(
-                    text = error,
-                    color = Color(0xFFFF7777),
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
+            Spacer(modifier = Modifier.height(10.dp))
+
+            OutlinedTextField(
+                value = state.userInput,
+                onValueChange = onInputChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = {
+                    Text("Ask JARVIS anything...")
+                },
+                enabled = !state.isProcessing,
+                singleLine = false
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = inputText,
-                    onValueChange = { inputText = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = {
-                        Text("Ask JARVIS...", color = Color.Gray)
-                    },
-                    singleLine = true
-                )
+                Button(
+                    onClick = onMicrophoneClick,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("MIC")
+                }
 
                 Button(
-                    onClick = {
-                        if (inputText.isNotBlank()) {
-                            onSendMessage(inputText.trim())
-                            inputText = ""
-                        }
-                    },
-                    enabled = inputText.isNotBlank()
+                    onClick = onSendMessage,
+                    modifier = Modifier.weight(1f),
+                    enabled = !state.isProcessing
                 ) {
-                    Text("SEND")
+                    Text(
+                        if (state.isProcessing) "WAIT..." else "SEND"
+                    )
                 }
             }
 
-            Button(
-                onClick = onMicrophoneClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
-            ) {
+            if (state.errorMessage != null) {
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    if (state.isListening) "STOP LISTENING"
-                    else "🎙 SPEAK TO JARVIS"
+                    text = state.errorMessage,
+                    color = Color.Red
                 )
             }
         }
     }
 
-    state.pendingConfirmation?.let { description ->
+    if (state.pendingConfirmation != null) {
         AlertDialog(
             onDismissRequest = onCancelAction,
             title = {
                 Text("Confirm action")
             },
             text = {
-                Text(description)
+                Text(state.pendingConfirmation)
             },
             confirmButton = {
                 TextButton(onClick = onConfirmAction) {
