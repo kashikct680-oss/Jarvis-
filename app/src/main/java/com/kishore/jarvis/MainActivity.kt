@@ -1,12 +1,17 @@
-
 package com.kishore.jarvis
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.Canvas
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,13 +26,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
@@ -38,83 +41,245 @@ private val Blue = Color(0xFF397BFF)
 private val MutedText = Color(0xFF8CA9C8)
 
 class MainActivity : ComponentActivity() {
-
-    private lateinit var textToSpeech: TextToSpeech
-    private var ttsReady = false
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         window.statusBarColor = android.graphics.Color.rgb(5, 11, 24)
         window.navigationBarColor = android.graphics.Color.rgb(5, 11, 24)
 
-        textToSpeech = TextToSpeech(this) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                val result = textToSpeech.setLanguage(Locale.US)
-
-                ttsReady = result != TextToSpeech.LANG_MISSING_DATA &&
-                        result != TextToSpeech.LANG_NOT_SUPPORTED
-
-                if (ttsReady) {
-                    textToSpeech.setSpeechRate(0.95f)
-                    textToSpeech.setPitch(0.9f)
-                    speak("Hello. JARVIS is online. How may I assist you?")
-                }
-            }
-        }
-
         setContent {
-            JarvisApp(
-                speakOut = { text -> speak(text) }
-            )
+            JarvisApp()
         }
-    }
-
-    private fun speak(text: String) {
-        if (ttsReady) {
-            textToSpeech.speak(
-                text,
-                TextToSpeech.QUEUE_FLUSH,
-                null,
-                "JARVIS_SPEECH"
-            )
-        }
-    }
-
-    override fun onDestroy() {
-        if (::textToSpeech.isInitialized) {
-            textToSpeech.stop()
-            textToSpeech.shutdown()
-        }
-        super.onDestroy()
     }
 }
 
 @Composable
-fun JarvisApp(speakOut: (String) -> Unit) {
+fun JarvisApp() {
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     var message by remember { mutableStateOf("") }
+    var status by remember { mutableStateOf("SYSTEM READY") }
+    var isListening by remember { mutableStateOf(false) }
+    var ttsReady by remember { mutableStateOf(false) }
 
     var messages by remember {
         mutableStateOf(
-            listOf("JARVIS ONLINE. Voice system initialized.")
+            listOf(
+                "JARVIS: Systems initialized.",
+                "JARVIS: Hello! I am ready. How may I assist you?"
+            )
         )
     }
 
-    fun sendMessage() {
-        if (message.isNotBlank()) {
-            val userMessage = message.trim()
+    val tts = remember {
+        TextToSpeech(context) { result ->
+            if (result == TextToSpeech.SUCCESS) {
+                ttsReady = true
+            }
+        }
+    }
 
-            messages = messages + "YOU: $userMessage"
+    DisposableEffect(tts) {
+        onDispose {
+            tts.stop()
+            tts.shutdown()
+        }
+    }
 
-            val response =
-                "I heard you say $userMessage. " +
-                "I am currently running in demonstration mode. " +
-                "My artificial intelligence connection will be added in the next stage."
+    fun speak(text: String) {
+        if (ttsReady) {
+            tts.language = Locale("en", "IN")
+            tts.setSpeechRate(1.0f)
+            tts.speak(
+                text,
+                TextToSpeech.QUEUE_FLUSH,
+                null,
+                "jarvis_reply"
+            )
+        }
+    }
 
-            speakOut(response)
+    fun getReply(input: String): String {
+        val command = input.lowercase(Locale.ROOT)
 
-            message = ""
+        return when {
+            command.contains("hello") ||
+            command.contains("hi jarvis") ->
+                "Hello! I am listening. What can I do for you?"
+
+            command.contains("your name") ->
+                "My name is JARVIS, your personal assistant."
+
+            command.contains("how are you") ->
+                "I am functioning properly. Thank you for asking."
+
+            command.contains("time") ->
+                "The current time is ${
+                    java.text.SimpleDateFormat(
+                        "hh:mm a",
+                        Locale.getDefault()
+                    ).format(java.util.Date())
+                }."
+
+            command.contains("date") ->
+                "Today's date is ${
+                    java.text.SimpleDateFormat(
+                        "dd MMMM yyyy",
+                        Locale.getDefault()
+                    ).format(java.util.Date())
+                }."
+
+            command.contains("thank") ->
+                "You are welcome. I am always ready to help."
+
+            else ->
+                "I heard you say: $input. My advanced AI connection will be added in a later stage."
+        }
+    }
+
+    fun sendMessage(input: String) {
+        if (input.isBlank()) return
+
+        val userMessage = input.trim()
+        val reply = getReply(userMessage)
+
+        messages = messages +
+            "YOU: $userMessage" +
+            "JARVIS: $reply"
+
+        message = ""
+        status = "RESPONSE READY"
+        speak(reply)
+    }
+
+    val permissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            if (granted) {
+                status = "MICROPHONE READY"
+            } else {
+                status = "MICROPHONE PERMISSION DENIED"
+            }
+        }
+
+    val speechRecognizer = remember {
+        if (SpeechRecognizer.isRecognitionAvailable(context)) {
+            if (
+                android.os.Build.VERSION.SDK_INT >= 31 &&
+                SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
+            ) {
+                SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+            } else {
+                SpeechRecognizer.createSpeechRecognizer(context)
+            }
+        } else {
+            null
+        }
+    }
+
+    DisposableEffect(speechRecognizer) {
+        if (speechRecognizer != null) {
+            speechRecognizer.setRecognitionListener(
+                object : RecognitionListener {
+
+                    override fun onReadyForSpeech(params: Bundle?) {
+                        status = "LISTENING..."
+                    }
+
+                    override fun onBeginningOfSpeech() {
+                        status = "HEARING YOUR VOICE"
+                    }
+
+                    override fun onRmsChanged(rmsdB: Float) {}
+
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+
+                    override fun onEndOfSpeech() {
+                        isListening = false
+                        status = "PROCESSING..."
+                    }
+
+                    override fun onError(error: Int) {
+                        isListening = false
+                        status = "VOICE INPUT ERROR. TRY AGAIN."
+                    }
+
+                    override fun onResults(results: Bundle?) {
+                        isListening = false
+
+                        val spokenText =
+                            results?.getStringArrayList(
+                                SpeechRecognizer.RESULTS_RECOGNITION
+                            )?.firstOrNull()
+
+                        if (!spokenText.isNullOrBlank()) {
+                            message = spokenText
+                            sendMessage(spokenText)
+                        } else {
+                            status = "NO SPEECH DETECTED"
+                        }
+                    }
+
+                    override fun onPartialResults(
+                        partialResults: Bundle?
+                    ) {}
+
+                    override fun onEvent(
+                        eventType: Int,
+                        params: Bundle?
+                    ) {}
+                }
+            )
+        }
+
+        onDispose {
+            speechRecognizer?.destroy()
+        }
+    }
+
+    fun startListening() {
+        if (speechRecognizer == null) {
+            status = "SPEECH RECOGNITION NOT AVAILABLE"
+            return
+        }
+
+        if (
+            context.checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            return
+        }
+
+        try {
+            val intent = Intent(
+                RecognizerIntent.ACTION_RECOGNIZE_SPEECH
+            ).apply {
+                putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                )
+                putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE,
+                    "en-IN"
+                )
+                putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
+                    "en-IN"
+                )
+                putExtra(
+                    RecognizerIntent.EXTRA_PARTIAL_RESULTS,
+                    false
+                )
+            }
+
+            tts.stop()
+            isListening = true
+            speechRecognizer.startListening(intent)
+        } catch (e: Exception) {
+            isListening = false
+            status = "COULD NOT START MICROPHONE"
         }
     }
 
@@ -126,9 +291,8 @@ fun JarvisApp(speakOut: (String) -> Unit) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 20.dp, vertical = 12.dp)
+                    .padding(18.dp)
             ) {
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -138,75 +302,67 @@ fun JarvisApp(speakOut: (String) -> Unit) {
                         Text(
                             "J.A.R.V.I.S",
                             color = Cyan,
-                            fontSize = 25.sp,
+                            fontSize = 26.sp,
                             fontWeight = FontWeight.Bold
                         )
 
                         Text(
-                            "ADVANCED PERSONAL ASSISTANT",
+                            "PERSONAL AI ASSISTANT",
                             color = MutedText,
-                            fontSize = 9.sp,
+                            fontSize = 10.sp,
                             letterSpacing = 2.sp
                         )
                     }
 
-                    Surface(
-                        color = Color(0xFF0C2630),
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(
-                                horizontal = 12.dp,
-                                vertical = 7.dp
-                            ),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(7.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF00FF9D))
-                            )
-
-                            Spacer(Modifier.width(7.dp))
-
-                            Text(
-                                "VOICE ACTIVE",
-                                color = Color(0xFF00FF9D),
-                                fontSize = 10.sp
-                            )
-                        }
-                    }
+                    Text(
+                        "● ACTIVE",
+                        color = Color(0xFF00FF9D),
+                        fontSize = 11.sp
+                    )
                 }
 
-                Spacer(Modifier.height(8.dp))
-
-                HorizontalDivider(color = Color(0xFF18334A))
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    color = Color(0xFF18334A)
+                )
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(0.9f),
+                        .weight(0.7f),
                     contentAlignment = Alignment.Center
                 ) {
-                    HologramCore()
-
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.offset(y = 125.dp)
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .size(145.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF102D4B)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "J",
+                                color = Cyan,
+                                fontSize = 76.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
                         Text(
-                            "SYSTEM READY",
+                            status,
                             color = Cyan,
                             fontSize = 12.sp,
-                            letterSpacing = 3.sp
+                            letterSpacing = 2.sp
                         )
 
                         Text(
-                            "VOICE RESPONSE ENABLED",
+                            "VOICE + TEXT INTERFACE",
                             color = MutedText,
-                            fontSize = 9.sp,
-                            letterSpacing = 2.sp
+                            fontSize = 10.sp
                         )
                     }
                 }
@@ -214,9 +370,9 @@ fun JarvisApp(speakOut: (String) -> Unit) {
                 Text(
                     "CONVERSATION",
                     color = Cyan,
-                    fontSize = 11.sp,
-                    letterSpacing = 2.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp
                 )
 
                 Spacer(Modifier.height(8.dp))
@@ -224,7 +380,7 @@ fun JarvisApp(speakOut: (String) -> Unit) {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(0.8f)
+                        .weight(1f)
                         .clip(RoundedCornerShape(14.dp))
                         .background(Color(0xFF0A1424))
                         .padding(12.dp),
@@ -237,8 +393,8 @@ fun JarvisApp(speakOut: (String) -> Unit) {
                                 Cyan
                             else
                                 Color(0xFFD4E7F8),
-                            fontSize = 13.sp,
-                            lineHeight = 20.sp
+                            fontSize = 14.sp,
+                            lineHeight = 21.sp
                         )
                     }
                 }
@@ -250,7 +406,7 @@ fun JarvisApp(speakOut: (String) -> Unit) {
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(14.dp))
                         .background(Color(0xFF102239))
-                        .padding(horizontal = 14.dp, vertical = 5.dp),
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     BasicTextField(
@@ -268,15 +424,14 @@ fun JarvisApp(speakOut: (String) -> Unit) {
                             imeAction = ImeAction.Send
                         ),
                         keyboardActions = KeyboardActions(
-                            onSend = { sendMessage() }
+                            onSend = { sendMessage(message) }
                         ),
                         decorationBox = { innerTextField ->
                             Box {
                                 if (message.isEmpty()) {
                                     Text(
-                                        "Talk to JARVIS...",
-                                        color = MutedText,
-                                        fontSize = 14.sp
+                                        "Type your message...",
+                                        color = MutedText
                                     )
                                 }
                                 innerTextField()
@@ -285,174 +440,58 @@ fun JarvisApp(speakOut: (String) -> Unit) {
                     )
 
                     Button(
-                        onClick = { sendMessage() },
+                        onClick = { sendMessage(message) },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Blue
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(
-                            horizontal = 17.dp,
-                            vertical = 9.dp
                         )
                     ) {
-                        Text("SEND", fontSize = 11.sp)
+                        Text("SEND")
                     }
                 }
 
                 Spacer(Modifier.height(10.dp))
 
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = { startListening() },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF087D9A)
+                        ),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text(
+                            if (isListening) "LISTENING..." else "🎙 SPEAK"
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            tts.stop()
+                            status = "SPEECH STOPPED"
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text("STOP VOICE")
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
                 Text(
-                    "VOICE  •  MEMORY  •  AUTOMATION  •  AI",
+                    "VOICE • AI • MEMORY • AUTOMATION",
                     modifier = Modifier.fillMaxWidth(),
                     color = MutedText,
                     fontSize = 9.sp,
-                    letterSpacing = 1.2.sp,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    letterSpacing = 1.sp
                 )
             }
-        }
-    }
-}
-
-@Composable
-fun HologramCore() {
-
-    val transition = rememberInfiniteTransition(label = "hologram")
-
-    val pulse by transition.animateFloat(
-        initialValue = 0.85f,
-        targetValue = 1.12f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                1800,
-                easing = FastOutSlowInEasing
-            ),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
-    )
-
-    val rotation by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                9000,
-                easing = LinearEasing
-            )
-        ),
-        label = "rotation"
-    )
-
-    Canvas(
-        modifier = Modifier.size(250.dp)
-    ) {
-        val center = this.center
-        val base = size.minDimension * 0.30f
-        val radius = base * pulse
-
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color(0x5540CFFF),
-                    Color(0x22397BFF),
-                    Color.Transparent
-                ),
-                center = center,
-                radius = base * 2.2f
-            ),
-            radius = base * 2.2f,
-            center = center
-        )
-
-        drawCircle(
-            color = Cyan.copy(alpha = 0.35f),
-            radius = base * 1.65f,
-            center = center,
-            style = Stroke(width = 2.dp.toPx())
-        )
-
-        drawArc(
-            color = Cyan,
-            startAngle = rotation,
-            sweepAngle = 95f,
-            useCenter = false,
-            topLeft = Offset(
-                center.x - base * 1.85f,
-                center.y - base * 1.85f
-            ),
-            size = Size(
-                base * 3.7f,
-                base * 3.7f
-            ),
-            style = Stroke(width = 3.dp.toPx())
-        )
-
-        drawArc(
-            color = Blue,
-            startAngle = -rotation,
-            sweepAngle = 120f,
-            useCenter = false,
-            topLeft = Offset(
-                center.x - base * 1.4f,
-                center.y - base * 1.4f
-            ),
-            size = Size(
-                base * 2.8f,
-                base * 2.8f
-            ),
-            style = Stroke(width = 2.dp.toPx())
-        )
-
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color.White,
-                    Cyan,
-                    Color(0xFF1768D8),
-                    Color(0xFF07152E)
-                ),
-                center = center,
-                radius = radius
-            ),
-            radius = radius,
-            center = center
-        )
-
-        drawCircle(
-            color = Color.White.copy(alpha = 0.65f),
-            radius = radius * 0.13f,
-            center = Offset(
-                center.x - radius * 0.25f,
-                center.y - radius * 0.25f
-            )
-        )
-
-        for (i in 0 until 8) {
-            val angle = Math.toRadians(
-                (rotation + i * 45f).toDouble()
-            )
-
-            val start = Offset(
-                center.x +
-                    kotlin.math.cos(angle).toFloat() * base * 1.15f,
-                center.y +
-                    kotlin.math.sin(angle).toFloat() * base * 1.15f
-            )
-
-            val end = Offset(
-                center.x +
-                    kotlin.math.cos(angle).toFloat() * base * 1.48f,
-                center.y +
-                    kotlin.math.sin(angle).toFloat() * base * 1.48f
-            )
-
-            drawLine(
-                color = Cyan.copy(alpha = 0.8f),
-                start = start,
-                end = end,
-                strokeWidth = 2.dp.toPx()
-            )
         }
     }
 }
