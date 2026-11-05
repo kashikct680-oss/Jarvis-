@@ -14,81 +14,145 @@ class SpeechInputManager(
 ) {
 
     private var speechRecognizer: SpeechRecognizer? = null
+    private var isListening = false
 
     fun isRecognitionAvailable(): Boolean {
         return SpeechRecognizer.isRecognitionAvailable(context)
     }
 
     fun startListening(language: String = "en-IN") {
+
         if (!isRecognitionAvailable()) {
             onError("Speech recognition is not available on this device.")
             return
         }
 
-        stopListening()
+        destroy()
 
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
+        try {
+            speechRecognizer =
+                SpeechRecognizer.createSpeechRecognizer(context)
 
-        speechRecognizer?.setRecognitionListener(
-            object : RecognitionListener {
+            speechRecognizer?.setRecognitionListener(
+                object : RecognitionListener {
 
-                override fun onReadyForSpeech(params: Bundle?) {}
-
-                override fun onBeginningOfSpeech() {}
-
-                override fun onRmsChanged(rmsdB: Float) {}
-
-                override fun onBufferReceived(buffer: ByteArray?) {}
-
-                override fun onEndOfSpeech() {}
-
-                override fun onError(error: Int) {
-                    onError("Speech recognition error: $error")
-                }
-
-                override fun onResults(results: Bundle?) {
-                    val matches = results?.getStringArrayList(
-                        SpeechRecognizer.RESULTS_RECOGNITION
-                    )
-
-                    val spokenText = matches?.firstOrNull()
-
-                    if (!spokenText.isNullOrBlank()) {
-                        onResult(spokenText)
-                    } else {
-                        onError("I could not understand. Please try again.")
+                    override fun onReadyForSpeech(params: Bundle?) {
+                        isListening = true
                     }
+
+                    override fun onBeginningOfSpeech() {}
+
+                    override fun onRmsChanged(rmsdB: Float) {}
+
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+
+                    override fun onEndOfSpeech() {
+                        isListening = false
+                    }
+
+                    override fun onError(error: Int) {
+                        isListening = false
+
+                        this@SpeechInputManager.onError(
+                            "Speech recognition error: $error"
+                        )
+
+                        destroy()
+                    }
+
+                    override fun onResults(results: Bundle?) {
+                        isListening = false
+
+                        val matches = results?.getStringArrayList(
+                            SpeechRecognizer.RESULTS_RECOGNITION
+                        )
+
+                        val spokenText = matches?.firstOrNull()
+
+                        if (!spokenText.isNullOrBlank()) {
+                            onResult(spokenText.trim())
+                        } else {
+                            this@SpeechInputManager.onError(
+                                "I could not understand. Please try again."
+                            )
+                        }
+
+                        destroy()
+                    }
+
+                    override fun onPartialResults(
+                        partialResults: Bundle?
+                    ) {}
+
+                    override fun onEvent(
+                        eventType: Int,
+                        params: Bundle?
+                    ) {}
                 }
-
-                override fun onPartialResults(partialResults: Bundle?) {}
-
-                override fun onEvent(eventType: Int, params: Bundle?) {}
-            }
-        )
-
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
             )
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, language)
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-        }
 
-        speechRecognizer?.startListening(intent)
+            val intent = Intent(
+                RecognizerIntent.ACTION_RECOGNIZE_SPEECH
+            ).apply {
+                putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                )
+
+                putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE,
+                    language
+                )
+
+                putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
+                    language
+                )
+
+                putExtra(
+                    RecognizerIntent.EXTRA_PARTIAL_RESULTS,
+                    false
+                )
+
+                putExtra(
+                    RecognizerIntent.EXTRA_MAX_RESULTS,
+                    3
+                )
+            }
+
+            speechRecognizer?.startListening(intent)
+
+        } catch (exception: Exception) {
+            isListening = false
+            destroy()
+
+            onError(
+                exception.message
+                    ?: "Unable to start speech recognition."
+            )
+        }
     }
 
     fun stopListening() {
-        speechRecognizer?.stopListening()
-        speechRecognizer?.destroy()
-        speechRecognizer = null
+        isListening = false
+
+        try {
+            speechRecognizer?.stopListening()
+        } catch (_: Exception) {
+            destroy()
+        }
     }
 
     fun destroy() {
-        speechRecognizer?.cancel()
-        speechRecognizer?.destroy()
+        isListening = false
+
+        try {
+            speechRecognizer?.cancel()
+            speechRecognizer?.destroy()
+        } catch (_: Exception) {
+            // Safely release speech recognition resources.
+        }
+
         speechRecognizer = null
     }
 }
