@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,8 +56,7 @@ fun JarvisScreen(
 
             Text(
                 text = state.statusMessage,
-                color = Color.LightGray,
-                style = MaterialTheme.typography.bodyMedium
+                color = Color.LightGray
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -103,11 +101,7 @@ fun JarvisScreen(
                         }
                     ) {
                         Text(
-                            text = if (message.isUser) {
-                                "YOU"
-                            } else {
-                                "JARVIS"
-                            },
+                            text = if (message.isUser) "YOU" else "JARVIS",
                             color = Color(0xFF00E5FF),
                             fontWeight = FontWeight.Bold
                         )
