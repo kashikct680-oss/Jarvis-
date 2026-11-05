@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -37,9 +36,7 @@ fun JarvisScreen(
     onConfirmAction: () -> Unit,
     onCancelAction: () -> Unit
 ) {
-    var message by rememberSaveable {
-        mutableStateOf("")
-    }
+    var message by rememberSaveable { mutableStateOf("") }
 
     Column(
         modifier = Modifier
