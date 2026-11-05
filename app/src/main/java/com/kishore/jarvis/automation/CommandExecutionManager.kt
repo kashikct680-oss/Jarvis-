@@ -21,8 +21,11 @@ class CommandExecutionManager(context: Context) {
     private val localStorage = LocalStorage(context)
     private val commandRouter = CommandRouter()
 
-    fun execute(input: String): CommandExecutionResult {
+    private val reminderHandler = ReminderCommandHandler(
+        ReminderManager(context)
+    )
 
+    fun execute(input: String): CommandExecutionResult {
         if (input.isBlank()) {
             return CommandExecutionResult(
                 false,
@@ -34,12 +37,11 @@ class CommandExecutionManager(context: Context) {
 
         return when (command.type) {
 
-            CommandType.GREETING -> {
+            CommandType.GREETING ->
                 CommandExecutionResult(
                     true,
                     "Hello! JARVIS is ready. How can I help you?"
                 )
-            }
 
             CommandType.GET_TIME -> {
                 val time = SimpleDateFormat(
@@ -66,9 +68,9 @@ class CommandExecutionManager(context: Context) {
             }
 
             CommandType.OPEN_APP -> {
-                val appName = command.argument.orEmpty()
-
-                val result = appLauncher.launchApp(appName)
+                val result = appLauncher.launchApp(
+                    command.argument.orEmpty()
+                )
 
                 CommandExecutionResult(
                     result.success,
@@ -85,49 +87,37 @@ class CommandExecutionManager(context: Context) {
                         "Please tell me what note to save."
                     )
                 } else {
-                    val key = "note_${System.currentTimeMillis()}"
-
-                    localStorage.saveNote(key, note)
+                    localStorage.saveNote(
+                        "note_${System.currentTimeMillis()}",
+                        note
+                    )
 
                     CommandExecutionResult(
                         true,
-                        "I have saved your note."
+                        "Your note has been saved."
                     )
                 }
             }
 
             CommandType.CALL_CONTACT -> {
-                val contactName = command.argument.orEmpty()
+                val result = phoneCallManager.callContact(
+                    command.argument.orEmpty()
+                )
 
-                if (contactName.isBlank()) {
-                    CommandExecutionResult(
-                        false,
-                        "Please tell me the contact name."
-                    )
-                } else {
-                    val result = phoneCallManager.callContact(contactName)
-
-                    CommandExecutionResult(
-                        result.success,
-                        result.message,
-                        requiresConfirmation = result.success
-                    )
-                }
-            }
-
-            CommandType.UNKNOWN,
-            CommandType.SET_REMINDER,
-            CommandType.SEND_MESSAGE,
-            CommandType.CALL_LAST_NUMBER,
-            CommandType.ANSWER_CALL,
-            CommandType.REJECT_CALL,
-            CommandType.END_CALL,
-            CommandType.APP_TASK -> {
                 CommandExecutionResult(
-                    false,
-                    "This command needs additional integration. I can assist you once the relevant module is connected."
+                    result.success,
+                    result.message,
+                    result.success
                 )
             }
+
+            CommandType.SET_REMINDER ->
+                reminderHandler.createReminder(input)
+
+            else -> CommandExecutionResult(
+                false,
+                "This command needs additional integration."
+            )
         }
     }
 }
