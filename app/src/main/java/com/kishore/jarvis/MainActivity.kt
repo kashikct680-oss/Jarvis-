@@ -2,6 +2,7 @@
 package com.kishore.jarvis
 
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.*
@@ -29,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 
 private val BackgroundColor = Color(0xFF050B18)
 private val Cyan = Color(0xFF00E5FF)
@@ -36,36 +38,81 @@ private val Blue = Color(0xFF397BFF)
 private val MutedText = Color(0xFF8CA9C8)
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var textToSpeech: TextToSpeech
+    private var ttsReady = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         window.statusBarColor = android.graphics.Color.rgb(5, 11, 24)
         window.navigationBarColor = android.graphics.Color.rgb(5, 11, 24)
 
-        setContent {
-            JarvisApp()
+        textToSpeech = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                val result = textToSpeech.setLanguage(Locale.US)
+
+                ttsReady = result != TextToSpeech.LANG_MISSING_DATA &&
+                        result != TextToSpeech.LANG_NOT_SUPPORTED
+
+                if (ttsReady) {
+                    textToSpeech.setSpeechRate(0.95f)
+                    textToSpeech.setPitch(0.9f)
+                    speak("Hello. JARVIS is online. How may I assist you?")
+                }
+            }
         }
+
+        setContent {
+            JarvisApp(
+                speakOut = { text -> speak(text) }
+            )
+        }
+    }
+
+    private fun speak(text: String) {
+        if (ttsReady) {
+            textToSpeech.speak(
+                text,
+                TextToSpeech.QUEUE_FLUSH,
+                null,
+                "JARVIS_SPEECH"
+            )
+        }
+    }
+
+    override fun onDestroy() {
+        if (::textToSpeech.isInitialized) {
+            textToSpeech.stop()
+            textToSpeech.shutdown()
+        }
+        super.onDestroy()
     }
 }
 
 @Composable
-fun JarvisApp() {
+fun JarvisApp(speakOut: (String) -> Unit) {
+
     var message by remember { mutableStateOf("") }
 
     var messages by remember {
         mutableStateOf(
-            listOf(
-                "JARVIS ONLINE. Systems initialized.",
-                "Hello! I am ready. How may I assist you?"
-            )
+            listOf("JARVIS ONLINE. Voice system initialized.")
         )
     }
 
     fun sendMessage() {
         if (message.isNotBlank()) {
-            messages = messages +
-                "YOU: $message" +
-                "JARVIS: Local demonstration mode. AI connection will be added in Stage 3."
+            val userMessage = message.trim()
+
+            messages = messages + "YOU: $userMessage"
+
+            val response =
+                "I heard you say $userMessage. " +
+                "I am currently running in demonstration mode. " +
+                "My artificial intelligence connection will be added in the next stage."
+
+            speakOut(response)
 
             message = ""
         }
@@ -81,7 +128,7 @@ fun JarvisApp() {
                     .fillMaxSize()
                     .padding(horizontal = 20.dp, vertical = 12.dp)
             ) {
-                // Header
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -124,7 +171,7 @@ fun JarvisApp() {
                             Spacer(Modifier.width(7.dp))
 
                             Text(
-                                "ONLINE",
+                                "VOICE ACTIVE",
                                 color = Color(0xFF00FF9D),
                                 fontSize = 10.sp
                             )
@@ -136,7 +183,6 @@ fun JarvisApp() {
 
                 HorizontalDivider(color = Color(0xFF18334A))
 
-                // Holographic core
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -157,7 +203,7 @@ fun JarvisApp() {
                         )
 
                         Text(
-                            "HYBRID AI INTERFACE",
+                            "VOICE RESPONSE ENABLED",
                             color = MutedText,
                             fontSize = 9.sp,
                             letterSpacing = 2.sp
@@ -165,7 +211,6 @@ fun JarvisApp() {
                     }
                 }
 
-                // Conversation area
                 Text(
                     "CONVERSATION",
                     color = Cyan,
@@ -200,7 +245,6 @@ fun JarvisApp() {
 
                 Spacer(Modifier.height(12.dp))
 
-                // Message input
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -235,7 +279,6 @@ fun JarvisApp() {
                                         fontSize = 14.sp
                                     )
                                 }
-
                                 innerTextField()
                             }
                         }
@@ -273,6 +316,7 @@ fun JarvisApp() {
 
 @Composable
 fun HologramCore() {
+
     val transition = rememberInfiniteTransition(label = "hologram")
 
     val pulse by transition.animateFloat(
@@ -307,7 +351,6 @@ fun HologramCore() {
         val base = size.minDimension * 0.30f
         val radius = base * pulse
 
-        // Outer glow
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
@@ -322,7 +365,6 @@ fun HologramCore() {
             center = center
         )
 
-        // Outer ring
         drawCircle(
             color = Cyan.copy(alpha = 0.35f),
             radius = base * 1.65f,
@@ -330,7 +372,6 @@ fun HologramCore() {
             style = Stroke(width = 2.dp.toPx())
         )
 
-        // Rotating arcs
         drawArc(
             color = Cyan,
             startAngle = rotation,
@@ -363,7 +404,6 @@ fun HologramCore() {
             style = Stroke(width = 2.dp.toPx())
         )
 
-        // Inner energy core
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
@@ -379,7 +419,6 @@ fun HologramCore() {
             center = center
         )
 
-        // Central highlight
         drawCircle(
             color = Color.White.copy(alpha = 0.65f),
             radius = radius * 0.13f,
@@ -389,7 +428,6 @@ fun HologramCore() {
             )
         )
 
-        // Energy lines
         for (i in 0 until 8) {
             val angle = Math.toRadians(
                 (rotation + i * 45f).toDouble()
