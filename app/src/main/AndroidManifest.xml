@@ -1,11 +1,10 @@
-
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- Microphone permission for voice input -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <!-- Internet access for future online AI -->
+    <!-- Internet access for online AI features -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Speech recognition service visibility -->
