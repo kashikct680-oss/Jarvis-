@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.kishore.jarvis.ai.AiRepository
 import com.kishore.jarvis.ai.GeminiService
+import com.kishore.jarvis.automation.CommandExecutionManager
 import com.kishore.jarvis.memory.LocalStorage
 
 class JarvisViewModelFactory(
@@ -16,7 +17,6 @@ class JarvisViewModelFactory(
     override fun <T : ViewModel> create(
         modelClass: Class<T>
     ): T {
-
         if (modelClass.isAssignableFrom(JarvisViewModel::class.java)) {
 
             val aiRepository: AiRepository =
@@ -26,9 +26,14 @@ class JarvisViewModelFactory(
                 context.applicationContext
             )
 
+            val commandExecutor = CommandExecutionManager(
+                context.applicationContext
+            )
+
             return JarvisViewModel(
                 aiRepository,
-                localStorage
+                localStorage,
+                commandExecutor
             ) as T
         }
 
