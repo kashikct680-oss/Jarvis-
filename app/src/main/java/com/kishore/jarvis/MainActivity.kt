@@ -8,9 +8,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.ViewModelProvider
 import com.kishore.jarvis.core.JarvisViewModel
 import com.kishore.jarvis.core.JarvisViewModelFactory
 import com.kishore.jarvis.ui.JarvisScreen
@@ -60,7 +59,7 @@ class MainActivity : ComponentActivity() {
                     jarvisViewModel.processText(spokenText)
                 }
             },
-            onError = { error ->
+            onError = {
                 runOnUiThread {
                     jarvisViewModel.setListening(false)
                 }
@@ -69,7 +68,6 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
-
                 val currentState = jarvisViewModel.state
 
                 LaunchedEffect(currentState.response) {
@@ -83,20 +81,16 @@ class MainActivity : ComponentActivity() {
 
                 JarvisScreen(
                     state = currentState,
-
                     onSendMessage = { message ->
                         jarvisViewModel.processText(message)
                     },
-
                     onMicrophoneClick = {
                         requestMicrophonePermission("en-IN")
                     },
-
                     onConfirmAction = {
-                        // Actual action execution will be connected
-                        // after the task execution module is integrated.
+                        // Confirmation integration will be connected
+                        // when the action execution flow is completed.
                     },
-
                     onCancelAction = {
                         jarvisViewModel.clearConversation()
                     }
@@ -124,9 +118,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startVoiceRecognition(language: String) {
-        if (speechInput?.isRecognitionAvailable() == true) {
+        val manager = speechInput
+
+        if (manager != null && manager.isRecognitionAvailable()) {
             jarvisViewModel.setListening(true)
-            speechInput?.startListening(language)
+            manager.startListening(language)
         } else {
             jarvisViewModel.setListening(false)
         }
@@ -134,7 +130,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         speechInput?.destroy()
-        speechOutput.shutdown()
+        speechInput = null
+
+        if (::speechOutput.isInitialized) {
+            speechOutput.shutdown()
+        }
+
         super.onDestroy()
     }
 }
