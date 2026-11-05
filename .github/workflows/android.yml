@@ -1,3 +1,4 @@
+
 name: Build JARVIS APK
 
 on:
@@ -16,17 +17,6 @@ jobs:
     steps:
       - name: Checkout project
         uses: actions/checkout@v4
-
-      - name: Extract updated JARVIS project
-        run: |
-          if [ -f "JARVIS_Advanced_Edition_Updated_Source.zip" ]; then
-            mkdir -p /tmp/jarvis-update
-            unzip -q JARVIS_Advanced_Edition_Updated_Source.zip -d /tmp/jarvis-update
-            cp -a /tmp/jarvis-update/Jarvis--main/. .
-          else
-            echo "Updated source ZIP not found"
-            exit 1
-          fi
 
       - name: Setup Java
         uses: actions/setup-java@v4
